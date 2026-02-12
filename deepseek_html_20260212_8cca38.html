@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux CTF — HACKER MODE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', 'Fira Code', monospace;
+            background: radial-gradient(circle at 20% 30%, #0c0f0a, #030503);
+            color: #33ff33;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-shadow: 0 0 5px #00ff00;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, 
+                rgba(0,255,0,0.03) 0px, 
+                rgba(0,0,0,0.5) 1px,
+                transparent 2px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .portal {
+            background: rgba(6, 12, 8, 0.92);
+            border: 3px solid #33ff33;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 0 40px #00cc00, inset 0 0 20px rgba(0,255,0,0.2);
+            max-width: 900px;
+            width: 100%;
+            backdrop-filter: blur(2px);
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.4em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px #00ff00, 0 0 40px #00aa00;
+            letter-spacing: 8px;
+            word-wrap: break-word;
+            color: #b3ffb3;
+            border-bottom: 2px solid #33ff33;
+            padding-bottom: 15px;
+            text-transform: uppercase;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #88ff88;
+            margin-bottom: 25px;
+            font-size: 1em;
+            border-bottom: 1px dashed #33ff33;
+            padding-bottom: 12px;
+            letter-spacing: 3px;
+        }
+
+        .terminal {
+            background: #0a0e0a;
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid #33ff33;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 15px rgba(0,255,0,0.2);
+        }
+
+        .terminal-header {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #33ff33;
+            padding-bottom: 10px;
+        }
+
+        .terminal-btn {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .red { background: #ff3c3c; box-shadow: 0 0 10px #ff0000; }
+        .yellow { background: #ffcc00; box-shadow: 0 0 10px #ffaa00; }
+        .green { background: #33ff33; box-shadow: 0 0 10px #00ff00; }
+
+        .prompt {
+            color: #88ff88;
+            margin-left: 10px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        #flagInput {
+            flex: 1;
+            background: #0f130f;
+            border: 2px solid #33ff33;
+            border-radius: 6px;
+            padding: 15px;
+            color: #33ff33;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            outline: none;
+            min-width: 240px;
+            box-shadow: 0 0 10px rgba(0,255,0,0.3);
+            transition: 0.2s;
+        }
+
+        #flagInput:focus {
+            box-shadow: 0 0 25px #00ff00, inset 0 0 10px #00aa00;
+            background: #0a0e0a;
+            border-color: #88ff88;
+        }
+
+        #flagInput::placeholder {
+            color: #44aa44;
+            opacity: 0.8;
+            font-style: italic;
+        }
+
+        button {
+            background: transparent;
+            border: 2px solid #33ff33;
+            color: #33ff33;
+            padding: 15px 30px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 1.1em;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0,255,0,0.3);
+            background: rgba(0,30,0,0.5);
+        }
+
+        button:hover {
+            background: #33ff33;
+            color: #030503;
+            box-shadow: 0 0 35px #00ff00, inset 0 0 10px #ffffff;
+            border-color: #88ff88;
+            font-weight: 900;
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            word-break: break-word;
+            animation: glitch 0.2s;
+            border-left: 8px solid;
+            font-size: 1.05em;
+            background: rgba(0,20,0,0.7);
+            backdrop-filter: blur(3px);
+        }
+
+        .success {
+            background: rgba(0, 255, 0, 0.12);
+            border: 1px solid #33ff33;
+            border-left: 8px solid #33ff33;
+            color: #ccffcc;
+            text-shadow: 0 0 10px #00ff00;
+            box-shadow: 0 0 25px rgba(0,255,0,0.3);
+        }
+
+        .error {
+            background: rgba(255, 60, 60, 0.12);
+            border: 1px solid #ff5f56;
+            border-left: 8px solid #ff5f56;
+            color: #ffaaaa;
+            text-shadow: 0 0 10px #ff0000;
+            box-shadow: 0 0 25px rgba(255,0,0,0.2);
+        }
+
+        .challenge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 25px;
+            max-height: 450px;
+            overflow-y: auto;
+            padding-right: 8px;
+            padding-bottom: 5px;
+        }
+
+        .challenge-card {
+            background: #0b120b;
+            border: 1.5px solid #226622;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.7);
+            border-left: 6px solid #226622;
+        }
+
+        .challenge-card:hover {
+            border-color: #33ff33;
+            border-left: 6px solid #33ff33;
+            background: #102010;
+            box-shadow: 0 0 25px rgba(0,255,0,0.4);
+            transform: translateX(5px);
+        }
+
+        .challenge-card.solved {
+            border: 2.5px solid #33ff33;
+            border-left: 12px solid #33ff33;
+            background: linear-gradient(145deg, #132013, #0c180c);
+            box-shadow: 0 0 35px #00ff00, inset 0 0 20px rgba(0,255,0,0.3);
+            position: relative;
+        }
+
+        .challenge-card.solved::after {
+            content: "⚡⚡⚡";
+            position: absolute;
+            bottom: 5px;
+            right: 15px;
+            color: #88ff88;
+            font-size: 1.2em;
+            text-shadow: 0 0 20px #00ff00;
+            letter-spacing: 5px;
+        }
+
+        .challenge-title {
+            color: #33ff33;
+            font-weight: 900;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.05em;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .challenge-desc {
+            color: #aaffaa;
+            font-size: 0.85em;
+            margin-top: 8px;
+            display: none;
+            border-top: 1px dashed #33ff33;
+            padding-top: 8px;
+        }
+
+        .challenge-card.active .challenge-desc {
+            display: block;
+        }
+
+        .badge {
+            background: #33ff33;
+            color: #030503;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 0.8em;
+            font-weight: 900;
+            box-shadow: 0 0 15px #00ff00;
+            letter-spacing: 1px;
+        }
+
+        .motivation {
+            color: #ffcc00;
+            font-style: italic;
+            margin-top: 8px;
+            font-size: 0.9em;
+            text-shadow: 0 0 8px #ffaa00;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,200,0,0.05);
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 4px solid #ffcc00;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            color: #88ff88;
+            font-size: 0.95em;
+            border-top: 2px solid #33ff33;
+            padding-top: 18px;
+            font-weight: bold;
+            background: rgba(0,20,0,0.5);
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #0f130f;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid #33ff33;
+            padding: 2px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #33ff33, #88ff88);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.4s;
+            box-shadow: 0 0 25px #00ff00;
+        }
+
+        @keyframes glitch {
+            0% { opacity: 0.8; transform: translateX(0); }
+            20% { transform: translateX(-3px); }
+            40% { transform: translateX(3px); }
+            60% { transform: translateX(-2px); }
+            80% { transform: translateX(2px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            font-size: 0.85em;
+            border-top: 1px dashed #33ff33;
+            padding-top: 18px;
+        }
+
+        .footer-links span {
+            cursor: pointer;
+            opacity: 0.8;
+            transition: 0.2s;
+            color: #88ff88;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+            padding: 5px 12px;
+            border: 1px solid transparent;
+        }
+
+        .footer-links span:hover {
+            opacity: 1;
+            color: #33ff33;
+            text-shadow: 0 0 15px #00ff00;
+            border: 1px solid #33ff33;
+            box-shadow: 0 0 20px rgba(0,255,0,0.4);
+            background: rgba(0,50,0,0.5);
+        }
+
+        #motivation-message {
+            display: block;
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,200,0,0.08);
+            border: 1px dashed #ffcc00;
+            border-radius: 6px;
+            color: #ffffaa;
+            font-style: italic;
+            margin-top: 15px;
+            letter-spacing: 1px;
+            font-size: 1em;
+            box-shadow: 0 0 15px rgba(255,200,0,0.2);
+        }
+
+        .challenge-grid::-webkit-scrollbar {
+            width: 10px;
+        }
+        .challenge-grid::-webkit-scrollbar-track {
+            background: #0a0e0a;
+        }
+        .challenge-grid::-webkit-scrollbar-thumb {
+            background: #33ff33;
+            border-radius: 10px;
+            box-shadow: inset 0 0 10px #00aa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="portal">
+        <h1>🐧 LINUX CTF</h1>
+        <div class="subtitle">[ 10 CHALLENGES · MAX 100 POINTS · NO SPOILERS ]</div>
+        
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-btn red"></div>
+                <div class="terminal-btn yellow"></div>
+                <div class="terminal-btn green"></div>
+                <span class="prompt">root@hackbox:~# ./flag_validator --hardcore-mode</span>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="flagInput" placeholder="⚡ flag: CTF{...}" autocomplete="off">
+                <button onclick="checkFlag()">ПРОВЕРИТЬ</button>
+            </div>
+            
+            <div id="result" class="result" style="display: block;"></div>
+            
+            <div style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="color: #33ff33; font-size: 1.2em; text-shadow: 0 0 15px #00ff00;">📡 ЗАДАНИЯ:</h3>
+                    <span style="color: #88ff88; font-size: 0.9em; background: #0f130f; padding: 5px 10px; border: 1px solid #33ff33;">✅ РЕШЕНО = ⚡⚡⚡</span>
+                </div>
+                <div id="challenges-list" class="challenge-grid"></div>
+            </div>
+            
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            
+            <div class="stats">
+                <span>🔥 РЕШЕНО: <span id="solvedCount" style="color:#33ff33; font-size:1.2em;">0</span>/10</span>
+                <span>💎 БАЛЛЫ: <span id="score" style="color:#33ff33; font-size:1.2em;">0</span>/100</span>
+                <span>⚡ ПОПЫТОК: <span id="attempts" style="color:#33ff33; font-size:1.2em;">0</span></span>
+            </div>
+        </div>
+
+        <span id="motivation-message">🔥 КЛИКНИ НА ЗАДАНИЕ — ПОЛУЧИ ЗАРЯД МОТИВАЦИИ</span>
+        
+        <div class="footer-links">
+            <span onclick="showAllFlags()">🔓 ALL FLAGS</span>
+            <span onclick="resetProgress()">🗑️ RESET</span>
+            <span onclick="showRandomChallenge()">🎲 RANDOM</span>
+        </div>
+    </div>
+
+    <script>
+        // 10 LINUX CTF ЗАДАНИЙ — БЕЗ ПОДСКАЗОК, ТОЛЬКО МОТИВАЦИЯ
+        const FLAGS = {
+            "CTF{ls_-la}": {
+                id: 1,
+                name: "1. СКРЫТЫЕ ФАЙЛЫ",
+                desc: "Какая команда показывает ВСЕ файлы (включая скрытые) в длинном формате?",
+                points: 10,
+                motivation: "🧠 Правда где-то рядом... даже если она спрятана",
+                shortName: "ls -la"
+            },
+            "CTF{chmod_755}": {
+                id: 2,
+                name: "2. ПРАВА ДОСТУПА",
+                desc: "Какие права (числовое значение) дают: rwxr-xr-x ?",
+                points: 10,
+                motivation: "🔐 Владелец может всё. Остальные только смотрят",
+                shortName: "chmod 755"
+            },
+            "CTF{kill_-9}": {
+                id: 3,
+                name: "3. ЗАВЕРШЕНИЕ ПРОЦЕССОВ",
+                desc: "Как принудительно убить процесс с PID 1234? (команда и сигнал)",
+                points: 10,
+                motivation: "💀 Иногда нужно просто вырубить питание",
+                shortName: "kill -9"
+            },
+            "CTF{vim_:wq}": {
+                id: 4,
+                name: "4. VIM РЕДАКТОР",
+                desc: "Какая команда в Vim сохраняет файл и выходит?",
+                points: 10,
+                motivation: "📝 Выйти из Vim сложнее, чем войти в IT",
+                shortName: "vim :wq"
+            },
+            "CTF{grep_-r}": {
+                id: 5,
+                name: "5. ПОИСК ТЕКСТА",
+                desc: "Как рекурсивно найти слово 'password' во всех файлах?",
+                points: 10,
+                motivation: "🔍 Где-то здесь твой пароль... или нет?",
+                shortName: "grep -r"
+            },
+            "CTF{find_-name}": {
+                id: 6,
+                name: "6. ПОИСК ФАЙЛОВ",
+                desc: "Как найти все файлы .conf в директории /etc?",
+                points: 10,
+                motivation: "🗂️ Конфиги как носки — вечно теряются",
+                shortName: "find -name"
+            },
+            "CTF{tar_-xvf}": {
+                id: 7,
+                name: "7. РАСПАКОВКА АРХИВОВ",
+                desc: "Какая команда распаковывает archive.tar.gz?",
+                points: 10,
+                motivation: "📦 Внутри может быть что угодно. Даже мемы 2012 года",
+                shortName: "tar -xvf"
+            },
+            "CTF{sudo_!!}": {
+                id: 8,
+                name: "8. SUDO МАГИЯ",
+                desc: "Как выполнить предыдущую команду с правами root?",
+                points: 10,
+                motivation: "👑 С большой силой приходит большой sudo",
+                shortName: "sudo !!"
+            },
+            "CTF{netstat_-tulpn}": {
+                id: 9,
+                name: "9. СЕТЕВЫЕ ПОРТЫ",
+                desc: "Какая команда показывает ВСЕ открытые порты и программы?",
+                points: 10,
+                motivation: "🌐 Кто стучится в дверь ко мне?",
+                shortName: "netstat -tulpn"
+            },
+            "CTF{/root/.bash_history}": {
+                id: 10,
+                name: "10. ИСТОРИЯ КОМАНД",
+                desc: "Где root хранит историю своих команд? (полный путь)",
+                points: 10,
+                motivation: "🤫 Здесь лежат все твои секреты. Не пались",
+                shortName: ".bash_history"
+            }
+        };
+
+        // МОТИВАЦИОННЫЕ ФРАЗЫ (БЕЗ ПОДСКАЗОК!)
+        const RANDOM_MOTIVATION = [
+            "🔥 Ты хакер или где?",
+            "💪 rm -rf — это не выход",
+            "🐧 Пингвины не плачут",
+            "⚡ Ещё один флаг и ты профи",
+            "🎯 Гугли, но не списывай",
+            "🤖 127.0.0.1 — твой дом",
+            "🍕 Код не заработает сам",
+            "🏆 Линукс ждёт героя",
+            "💀 Permission denied — не приговор",
+            "🚀 Ты быстрее grep'а"
+        ];
+
+        let solvedFlags = JSON.parse(localStorage.getItem('hackerSolvedFlags')) || [];
+        let attempts = parseInt(localStorage.getItem('hackerAttempts')) || 0;
+        let score = solvedFlags.reduce((total, flag) => total + (FLAGS[flag]?.points || 0), 0);
+
+        const flagInput = document.getElementById('flagInput');
+        const resultDiv = document.getElementById('result');
+        const scoreSpan = document.getElementById('score');
+        const attemptsSpan = document.getElementById('attempts');
+        const solvedCountSpan = document.getElementById('solvedCount');
+        const motivationDiv = document.getElementById('motivation-message');
+        const challengesList = document.getElementById('challenges-list');
+        const progressFill = document.getElementById('progressFill');
+
+        init();
+
+        function init() {
+            updateStats();
+            renderChallenges();
+            flagInput.addEventListener('keypress', (e) => e.key === 'Enter' && checkFlag());
+            showRandomMotivation();
+        }
+
+        function checkFlag() {
+            const flag = flagInput.value.trim();
+            if (!flag) {
+                showResult('⛔ ФЛАГ НЕ МОЖЕТ БЫТЬ ПУСТЫМ', 'error');
+                return;
+            }
+
+            attempts++;
+            localStorage.setItem('hackerAttempts', attempts);
+
+            if (FLAGS[flag]) {
+                if (solvedFlags.includes(flag)) {
+                    showResult(`⚠️ ФЛАГ "${FLAGS[flag].shortName}" УЖЕ ВЗЛОМАН`, 'error');
+                } else {
+                    solvedFlags.push(flag);
+                    localStorage.setItem('hackerSolvedFlags', JSON.stringify(solvedFlags));
+                    score += FLAGS[flag].points;
+
+                    showResult(`
+                        ✅ ФЛАГ ПРИНЯТ!
+                        ⚡ ${FLAGS[flag].shortName}
+                        🔥 +${FLAGS[flag].points} БАЛЛОВ
+                        💎 ВСЕГО: ${score}/100
+                    `, 'success');
+
+                    updateStats();
+                    renderChallenges();
+                    motivationDiv.innerHTML = `🔥 ${FLAGS[flag].motivation}`;
+
+                    if (solvedFlags.length === 10) {
+                        setTimeout(() => {
+                            showResult('🏆 ТЫ ВЗЛОМАЛ ВСЁ! МАКСИМУМ 100/100! 🐧🏆', 'success');
+                            motivationDiv.innerHTML = '🏆 ТЫ ЛЕГЕНДА! ПИНГВИНЫ ТРЕПЕЩУТ! 🐧🏆';
+                        }, 500);
+                    }
+                }
+            } else {
+                showResult('❌ НЕВЕРНЫЙ ФЛАГ! ДУМАЙ ЕЩЁ', 'error');
+                showRandomMotivation();
+            }
+
+            flagInput.value = '';
+            flagInput.focus();
+        }
+
+        function showResult(message, type) {
+            resultDiv.innerHTML = message.replace(/\n/g, '<br>');
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+
+        function updateStats() {
+            scoreSpan.textContent = score;
+            attemptsSpan.textContent = attempts;
+            solvedCountSpan.textContent = solvedFlags.length;
+            progressFill.style.width = (score / 100) * 100 + '%';
+        }
+
+        function renderChallenges() {
+            let html = '';
+            const sorted = Object.entries(FLAGS).sort((a, b) => a[1].id - b[1].id);
+
+            sorted.forEach(([flag, data]) => {
+                const isSolved = solvedFlags.includes(flag);
+                const solvedClass = isSolved ? 'solved' : '';
+                const statusIcon = isSolved ? '✅' : '⬜';
+
+                html += `
+                    <div class="challenge-card ${solvedClass}" onclick="toggleChallenge(this, '${data.motivation}')">
+                        <div class="challenge-title">
+                            <span>${statusIcon} ${data.name}</span>
+                            <span class="badge">${data.points}</span>
+                        </div>
+                        <div class="challenge-desc">
+                            <span style="color: #bbffbb;">${data.desc}</span><br>
+                            <span class="motivation">💬 ${data.motivation}</span>
+                            ${isSolved ? '<br><span style="color: #33ff33; font-weight: 900; font-size:1.1em;">✓ РЕШЕНО +10 ⚡⚡⚡</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            challengesList.innerHTML = html;
+        }
+
+        window.toggleChallenge = function(element, motivationText) {
+            element.classList.toggle('active');
+            motivationDiv.innerHTML = `💬 ${motivationText || getRandomMotivation()}`;
+        };
+
+        function getRandomMotivation() {
+            return RANDOM_MOTIVATION[Math.floor(Math.random() * RANDOM_MOTIVATION.length)];
+        }
+
+        function showRandomMotivation() {
+            motivationDiv.innerHTML = `💬 ${getRandomMotivation()}`;
+        }
+
+        function showAllFlags() {
+            let msg = '📡 ВСЕ ФЛАГИ (10 шт):<br><br>';
+            Object.entries(FLAGS).sort((a,b) => a[1].id - b[1].id).forEach(([flag, data]) => {
+                const status = solvedFlags.includes(flag) ? '✅' : '⬜';
+                msg += `${status} ${flag}<br>`;
+            });
+            showResult(msg, 'info');
+        }
+
+        function resetProgress() {
+            if (confirm('⚠️ СБРОСИТЬ ПРОГРЕСС?')) {
+                solvedFlags = [];
+                score = 0;
+                attempts = 0;
+                localStorage.clear();
+                updateStats();
+                renderChallenges();
+                showResult('🔄 ПРОГРЕСС СБРОШЕН', 'info');
+                showRandomMotivation();
+            }
+        }
+
+        function showRandomChallenge() {
+            const flags = Object.keys(FLAGS);
+            const random = flags[Math.floor(Math.random() * flags.length)];
+            showResult(`
+                🎲 СЛУЧАЙНОЕ ЗАДАНИЕ:<br>
+                ${FLAGS[random].name}<br>
+                ${FLAGS[random].desc}
+            `, 'info');
+            motivationDiv.innerHTML = `💬 ${FLAGS[random].motivation}`;
+        }
+    </script>
+</body>
+</html>
